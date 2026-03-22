@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Insertar Pedidos - El Taller de Marta{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2 class="page-title"><i class="bi bi-plus-circle me-2"></i>Insertar Pedido</h2>
+    <span class="text-muted">Registrar un nuevo pedido</span>
+</div>
+
+<div class="row g-4">
+    <!-- Insert Form -->
+    <div class="col-12 col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">
+                <i class="bi bi-clipboard-plus me-2"></i>Nuevo Pedido
+            </div>
+            <div class="card-body">
+                <div id="insertPedidoAlert"></div>
+
+                <div class="mb-3">
+                    <label class="form-label">Cliente <span class="text-danger">*</span></label>
+                    <select class="form-select" id="pedClienteId">
+                        <option value="">Selecciona un cliente...</option>
+                        {% for c in clients %}
+                        <option value="{{ c.ID }}">{{ c.Nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Artículo <span class="text-danger">*</span></label>
+                    <select class="form-select" id="pedArticuloId" onchange="loadArticuloDefaults(this.value)">
+                        <option value="">Selecciona un artículo...</option>
+                        {% for a in articles %}
+                        <option value="{{ a.ID }}">{{ a.Articulo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-control" id="pedDescripcion" rows="2" placeholder="Descripción del pedido"></textarea>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Cantidad</label>
+                        <input type="number" class="form-control" id="pedCantidad" min="1" value="1">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Costurera</label>
+                        <select class="form-select" id="pedProveedor">
+                            <option value="">Sin asignar</option>
+                            {% for c in costureras %}
+                            <option value="{{ c }}">{{ c }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Coste Material</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="pedCosteMaterial" step="0.01" min="0">
+                            <span class="input-group-text">€</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Coste Costurera</label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="pedCosteProveedor" step="0.01" min="0">
+                            <span class="input-group-text">€</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Importe</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="pedImporte" step="0.01" min="0">
+                        <span class="input-group-text">€</span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Estado de pago</label>
+                    <select class="form-select" id="pedPagado">
+                        {% for p in payment_options %}
+                        <option value="{{ p }}" {% if loop.first %}selected{% endif %}>{{ p }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Fecha de entrega</label>
+                        <input type="date" class="form-control" id="pedEntregaCliente" value="{{ today }}">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Fecha límite</label>
+                        <input type="date" class="form-control" id="pedLimite">
+                    </div>
+                </div>
+
+                <button class="btn btn-primary w-100" onclick="insertPedido()">
+                    <i class="bi bi-plus-circle me-1"></i>Añadir Pedido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's Orders -->
+    <div class="col-12 col-lg-7">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">
+                <i class="bi bi-calendar-day me-2"></i>Pedidos de hoy ({{ today }}) — {{ today_orders|length }}
+            </div>
+            <div class="card-body p-0">
+                {% if today_orders %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Artículo</th>
+                                <th>Descripción</th>
+                                <th>Costurera</th>
+                                <th class="text-end">Importe</th>
+                                <th>Pagado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in today_orders %}
+                            <tr>
+                                <td>{{ p.Cliente or '' }}</td>
+                                <td>{{ p.Articulo or '' }}</td>
+                                <td>{{ p.Descripcion or '' }}</td>
+                                <td>{{ p.Proveedor or '' }}</td>
+                                <td class="text-end">{{ '%.2f€'|format(p.Importe|float) if p.Importe is not none else '—' }}</td>
+                                <td>
+                                    {% if p.Pagado == 'No Pagado' %}
+                                        <span class="badge bg-danger">No Pagado</span>
+                                    {% elif p.Pagado %}
+                                        <span class="badge bg-success">{{ p.Pagado }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-calendar-x display-4 d-block mb-2"></i>
+                    <p>No hay pedidos registrados para hoy.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Article data for auto-fill
+const articleData = {
+    {% for a in articles %}
+    {{ a.ID }}: {
+        coste_material: {{ a.Coste_Material_Sugerido or 'null' }},
+        coste_proveedor: {{ a.Coste_Proveedor_Sugerido or 'null' }},
+        importe: {{ a.Importe_Sugerido or 'null' }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+};
+
+function loadArticuloDefaults(id) {
+    if (!id || !articleData[id]) return;
+    const art = articleData[id];
+    if (art.coste_material !== null) {
+        document.getElementById('pedCosteMaterial').value = art.coste_material;
+    }
+    if (art.coste_proveedor !== null) {
+        document.getElementById('pedCosteProveedor').value = art.coste_proveedor;
+    }
+    if (art.importe !== null) {
+        document.getElementById('pedImporte').value = art.importe;
+    }
+}
+
+function insertPedido() {
+    const clienteId = document.getElementById('pedClienteId').value;
+    const articuloId = document.getElementById('pedArticuloId').value;
+    const alertEl = document.getElementById('insertPedidoAlert');
+
+    if (!clienteId) {
+        alertEl.innerHTML = '<div class="alert alert-danger py-2">Selecciona un cliente.</div>';
+        return;
+    }
+    if (!articuloId) {
+        alertEl.innerHTML = '<div class="alert alert-danger py-2">Selecciona un artículo.</div>';
+        return;
+    }
+
+    const data = {
+        Cliente_id: parseInt(clienteId),
+        Articulo_id: parseInt(articuloId),
+        Descripcion: document.getElementById('pedDescripcion').value || null,
+        Cantidad: document.getElementById('pedCantidad').value || null,
+        Proveedor: document.getElementById('pedProveedor').value || null,
+        Pagado: document.getElementById('pedPagado').value || 'No Pagado',
+        Entrega_Cliente: document.getElementById('pedEntregaCliente').value || null,
+        Limite: document.getElementById('pedLimite').value || null,
+        Coste_Material: document.getElementById('pedCosteMaterial').value || null,
+        Coste_Proveedor: document.getElementById('pedCosteProveedor').value || null,
+        Importe: document.getElementById('pedImporte').value || null
+    };
+
+    fetch('/api/pedidos/insert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(result) {
+        if (result.success) {
+            alertEl.innerHTML = '<div class="alert alert-success py-2"><i class="bi bi-check-circle me-1"></i>Pedido añadido correctamente.</div>';
+            // Reset form
+            document.getElementById('pedClienteId').value = '';
+            document.getElementById('pedArticuloId').value = '';
+            document.getElementById('pedDescripcion').value = '';
+            document.getElementById('pedCantidad').value = '1';
+            document.getElementById('pedProveedor').value = '';
+            document.getElementById('pedCosteMaterial').value = '';
+            document.getElementById('pedCosteProveedor').value = '';
+            document.getElementById('pedImporte').value = '';
+            document.getElementById('pedPagado').value = 'No Pagado';
+            document.getElementById('pedLimite').value = '';
+            setTimeout(function() { window.location.reload(); }, 1000);
+        } else {
+            alertEl.innerHTML = '<div class="alert alert-danger py-2">' + (result.error || 'Error desconocido') + '</div>';
+        }
+    })
+    .catch(function(err) {
+        alertEl.innerHTML = '<div class="alert alert-danger py-2">Error de red: ' + err.message + '</div>';
+    });
+}
+</script>
+{% endblock %}

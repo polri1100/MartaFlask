@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Proveedores - El Taller de Marta{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2 class="page-title"><i class="bi bi-person-badge me-2"></i>Proveedores</h2>
+    <span class="text-muted">Pagos pendientes a costureras</span>
+</div>
+
+{% if pedidos %}
+<div class="alert alert-info d-flex align-items-center" role="alert">
+    <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+    <div>Hay <strong>{{ pedidos|length }}</strong> pedido{{ 's' if pedidos|length != 1 else '' }} con pago pendiente a costurera.</div>
+</div>
+{% endif %}
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <span class="fw-semibold">Pagos pendientes ({{ pedidos|length }})</span>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            {% if pedidos %}
+            <input type="text" class="form-control form-control-sm" id="searchProveedores"
+                   placeholder="Buscar..." style="min-width:180px">
+            <button class="btn btn-outline-secondary btn-sm" onclick="toggleAllCheckboxes()">
+                <i class="bi bi-check-all me-1"></i>Sel. todo
+            </button>
+            <button class="btn btn-success btn-sm" onclick="pagarSeleccionados()">
+                <i class="bi bi-cash-coin me-1"></i>Pagar seleccionados
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="pagarAlert" class="px-3 pt-2"></div>
+
+    <div class="card-body p-0">
+        {% if pedidos %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="tablaProveedores">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="text-center" style="width:40px">
+                            <input type="checkbox" id="selectAll" onchange="toggleAllCheckboxes(this.checked)">
+                        </th>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>Artículo</th>
+                        <th>Descripción</th>
+                        <th>Costurera</th>
+                        <th>Recogida de costurera</th>
+                        <th class="text-end">Coste costurera</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in pedidos %}
+                    <tr>
+                        <td class="text-center">
+                            <input type="checkbox" class="pedido-check" value="{{ p.ID }}">
+                        </td>
+                        <td class="text-muted small">{{ p.ID }}</td>
+                        <td>{{ p.Cliente or '' }}</td>
+                        <td>{{ p.Articulo or '' }}</td>
+                        <td>{{ p.Descripcion or '' }}</td>
+                        <td><span class="badge bg-secondary">{{ p.Proveedor or '—' }}</span></td>
+                        <td>{{ p.Recogida_Proveedor or '' }}</td>
+                        <td class="text-end fw-semibold">
+                            {{ '%.2f€'|format(p.Coste_Proveedor|float) if p.Coste_Proveedor is not none else '—' }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <td colspan="7" class="fw-bold text-end">Total pendiente:</td>
+                        <td class="fw-bold text-end">
+                            {% set total = namespace(value=0) %}
+                            {% for p in pedidos %}
+                                {% if p.Coste_Proveedor is not none %}
+                                    {% set total.value = total.value + p.Coste_Proveedor|float %}
+                                {% endif %}
+                            {% endfor %}
+                            {{ '%.2f€'|format(total.value) }}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-check2-circle display-4 d-block mb-2 text-success"></i>
+            <p class="mb-0 text-success fw-semibold">¡Todo pagado! No hay pagos pendientes a costureras.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if pedidos %}
+<script>
+document.getElementById('searchProveedores').addEventListener('input', function() {
+    const query = this.value.toLowerCase();
+    document.querySelectorAll('#tablaProveedores tbody tr').forEach(function(row) {
+        row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+    });
+});
+
+function toggleAllCheckboxes(checked) {
+    const checkboxes = document.querySelectorAll('.pedido-check');
+    const selectAll = document.getElementById('selectAll');
+    if (checked === undefined) {
+        // Called from button
+        const allChecked = Array.from(checkboxes).every(function(cb) { return cb.checked; });
+        checkboxes.forEach(function(cb) { cb.checked = !allChecked; });
+        selectAll.checked = !allChecked;
+    } else {
+        checkboxes.forEach(function(cb) { cb.checked = checked; });
+    }
+}
+
+function pagarSeleccionados() {
+    const checked = document.querySelectorAll('.pedido-check:checked');
+    const alertEl = document.getElementById('pagarAlert');
+
+    if (checked.length === 0) {
+        alertEl.innerHTML = '<div class="alert alert-warning py-2">Selecciona al menos un pedido para pagar.</div>';
+        return;
+    }
+
+    const ids = Array.from(checked).map(function(cb) { return parseInt(cb.value); });
+
+    if (!confirm('¿Marcar ' + ids.length + ' pedido(s) como pagado(s) hoy?')) return;
+
+    fetch('/api/proveedores/pagar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: ids })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.success) {
+            alertEl.innerHTML = '<div class="alert alert-success py-2"><i class="bi bi-check-circle me-1"></i>' + data.updated + ' pedido(s) marcados como pagados.</div>';
+            setTimeout(function() { window.location.reload(); }, 1000);
+        } else {
+            alertEl.innerHTML = '<div class="alert alert-danger py-2">' + (data.error || 'Error desconocido') + '</div>';
+        }
+    })
+    .catch(function(err) {
+        alertEl.innerHTML = '<div class="alert alert-danger py-2">Error de red: ' + err.message + '</div>';
+    });
+}
+</script>
+{% endif %}
+{% endblock %}

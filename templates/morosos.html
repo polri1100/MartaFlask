@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Morosos - El Taller de Marta{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2 class="page-title"><i class="bi bi-exclamation-triangle me-2"></i>Morosos</h2>
+    <span class="text-muted">Pedidos entregados sin cobrar</span>
+</div>
+
+{% if morosos %}
+<div class="alert alert-warning d-flex align-items-center" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+    <div>Hay <strong>{{ morosos|length }}</strong> pedido{{ 's' if morosos|length != 1 else '' }} entregado{{ 's' if morosos|length != 1 else '' }} sin pagar.</div>
+</div>
+{% endif %}
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span class="fw-semibold">Pedidos sin cobrar ({{ morosos|length }})</span>
+        {% if morosos %}
+        <input type="text" class="form-control form-control-sm w-auto" id="searchMorosos"
+               placeholder="Buscar..." style="min-width:200px">
+        {% endif %}
+    </div>
+    <div class="card-body p-0">
+        {% if morosos %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="tablaMorosos">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>Artículo</th>
+                        <th>Descripción</th>
+                        <th>Costurera</th>
+                        <th>Entrega</th>
+                        <th>Recogida</th>
+                        <th class="text-end">Importe</th>
+                        <th class="text-center">Pagado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in morosos %}
+                    <tr>
+                        <td class="text-muted small">{{ p.ID }}</td>
+                        <td><strong>{{ p.Cliente or '' }}</strong></td>
+                        <td>{{ p.Articulo or '' }}</td>
+                        <td>{{ p.Descripcion or '' }}</td>
+                        <td>{{ p.Proveedor or '' }}</td>
+                        <td>{{ p.Entrega_Cliente or '' }}</td>
+                        <td>{{ p.Recogida_Cliente or '' }}</td>
+                        <td class="text-end fw-semibold text-danger">
+                            {{ '%.2f€'|format(p.Importe|float) if p.Importe is not none else '—' }}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-danger">No Pagado</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <td colspan="7" class="fw-bold text-end">Total pendiente:</td>
+                        <td class="fw-bold text-end text-danger">
+                            {% set total = namespace(value=0) %}
+                            {% for p in morosos %}
+                                {% if p.Importe is not none %}
+                                    {% set total.value = total.value + p.Importe|float %}
+                                {% endif %}
+                            {% endfor %}
+                            {{ '%.2f€'|format(total.value) }}
+                        </td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-check2-circle display-4 d-block mb-2 text-success"></i>
+            <p class="mb-0 text-success fw-semibold">¡Sin morosos! Todos los pedidos están pagados.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{% if morosos %}
+<script>
+document.getElementById('searchMorosos').addEventListener('input', function() {
+    const query = this.value.toLowerCase();
+    document.querySelectorAll('#tablaMorosos tbody tr').forEach(function(row) {
+        row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

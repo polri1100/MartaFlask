@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio - El Taller de Marta{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2 class="page-title"><i class="bi bi-kanban me-2"></i>Tablero de Pedidos</h2>
+    <span class="text-muted">Gestión del flujo de trabajo</span>
+</div>
+
+<div class="row g-3 kanban-board">
+
+    <!-- Column 1: Local para costurera -->
+    <div class="col-12 col-lg-4">
+        <div class="kanban-column">
+            <div class="kanban-header kanban-header-1">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-inbox"></i>
+                    <span>Local para costurera</span>
+                    <span class="badge bg-light text-dark ms-auto">{{ col1|length }}</span>
+                </div>
+                <input type="text" class="form-control form-control-sm mt-2 kanban-search"
+                       placeholder="Buscar cliente o artículo..." data-target="col1-cards">
+            </div>
+            <div class="kanban-cards" id="col1-cards">
+                {% for order in col1 %}
+                <div class="kanban-card" data-search="{{ (order.Cliente or '') ~ ' ' ~ (order.Articulo or '') }}">
+                    <div class="kanban-card-header">
+                        <strong>{{ order.Cliente or 'Sin cliente' }}</strong>
+                        <span class="badge badge-articulo">{{ order.Articulo or 'Sin artículo' }}</span>
+                    </div>
+                    {% if order.Descripcion %}
+                        <p class="kanban-card-desc">{{ order.Descripcion }}</p>
+                    {% endif %}
+                    <div class="kanban-card-meta">
+                        {% if order.Entrega_Cliente %}
+                            <span><i class="bi bi-calendar-check me-1"></i>{{ order.Entrega_Cliente }}</span>
+                        {% endif %}
+                        {% if order.Cantidad %}
+                            <span><i class="bi bi-layers me-1"></i>{{ order.Cantidad }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="kanban-card-actions mt-2">
+                        <div class="mb-2">
+                            <small class="text-muted fw-semibold">Costurera:</small>
+                            <div class="costurera-radios">
+                                {% for c in costureras %}
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio"
+                                           name="costurera_{{ order.ID }}"
+                                           id="cos_{{ order.ID }}_{{ loop.index }}"
+                                           value="{{ c }}">
+                                    <label class="form-check-label small" for="cos_{{ order.ID }}_{{ loop.index }}">{{ c }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <button class="btn btn-success btn-sm w-100"
+                                onclick="moveForward({{ order.ID }}, 1, 'costurera_{{ order.ID }}')">
+                            <i class="bi bi-arrow-right-circle me-1"></i>Enviar a costurera
+                        </button>
+                    </div>
+                </div>
+                {% else %}
+                <div class="kanban-empty">
+                    <i class="bi bi-check2-circle"></i>
+                    <p>Sin pedidos pendientes</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Column 2: En la costurera -->
+    <div class="col-12 col-lg-4">
+        <div class="kanban-column">
+            <div class="kanban-header kanban-header-2">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-person-workspace"></i>
+                    <span>En la costurera</span>
+                    <span class="badge bg-light text-dark ms-auto">{{ col2|length }}</span>
+                </div>
+                <input type="text" class="form-control form-control-sm mt-2 kanban-search"
+                       placeholder="Buscar cliente o artículo..." data-target="col2-cards">
+            </div>
+            <div class="kanban-cards" id="col2-cards">
+                {% for order in col2 %}
+                <div class="kanban-card" data-search="{{ (order.Cliente or '') ~ ' ' ~ (order.Articulo or '') }}">
+                    <div class="kanban-card-header">
+                        <strong>{{ order.Cliente or 'Sin cliente' }}</strong>
+                        <span class="badge badge-articulo">{{ order.Articulo or 'Sin artículo' }}</span>
+                    </div>
+                    {% if order.Descripcion %}
+                        <p class="kanban-card-desc">{{ order.Descripcion }}</p>
+                    {% endif %}
+                    <div class="kanban-card-meta">
+                        {% if order.Proveedor %}
+                            <span class="badge bg-secondary"><i class="bi bi-person me-1"></i>{{ order.Proveedor }}</span>
+                        {% endif %}
+                        {% if order.Entrega_Cliente %}
+                            <span><i class="bi bi-calendar-check me-1"></i>{{ order.Entrega_Cliente }}</span>
+                        {% endif %}
+                        {% if order.Entrega_Proveedor %}
+                            <span class="text-muted small"><i class="bi bi-arrow-right me-1"></i>Enviado: {{ order.Entrega_Proveedor }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="kanban-card-actions mt-2 d-flex gap-2">
+                        <button class="btn btn-outline-warning btn-sm flex-fill"
+                                onclick="moveBackward({{ order.ID }}, 2)">
+                            <i class="bi bi-arrow-left-circle me-1"></i>Retroceder
+                        </button>
+                        <button class="btn btn-success btn-sm flex-fill"
+                                onclick="moveForward({{ order.ID }}, 2)">
+                            <i class="bi bi-arrow-right-circle me-1"></i>Recoger
+                        </button>
+                    </div>
+                </div>
+                {% else %}
+                <div class="kanban-empty">
+                    <i class="bi bi-check2-circle"></i>
+                    <p>Sin pedidos en costurera</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Column 3: Local para entregar -->
+    <div class="col-12 col-lg-4">
+        <div class="kanban-column">
+            <div class="kanban-header kanban-header-3">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-bag-check"></i>
+                    <span>Local para entregar</span>
+                    <span class="badge bg-light text-dark ms-auto">{{ col3|length }}</span>
+                </div>
+                <input type="text" class="form-control form-control-sm mt-2 kanban-search"
+                       placeholder="Buscar cliente o artículo..." data-target="col3-cards">
+            </div>
+            <div class="kanban-cards" id="col3-cards">
+                {% for order in col3 %}
+                <div class="kanban-card" data-search="{{ (order.Cliente or '') ~ ' ' ~ (order.Articulo or '') }}">
+                    <div class="kanban-card-header">
+                        <strong>{{ order.Cliente or 'Sin cliente' }}</strong>
+                        <span class="badge badge-articulo">{{ order.Articulo or 'Sin artículo' }}</span>
+                    </div>
+                    {% if order.Descripcion %}
+                        <p class="kanban-card-desc">{{ order.Descripcion }}</p>
+                    {% endif %}
+                    <div class="kanban-card-meta">
+                        {% if order.Proveedor %}
+                            <span class="badge bg-secondary"><i class="bi bi-person me-1"></i>{{ order.Proveedor }}</span>
+                        {% endif %}
+                        {% if order.Entrega_Cliente %}
+                            <span><i class="bi bi-calendar-check me-1"></i>{{ order.Entrega_Cliente }}</span>
+                        {% endif %}
+                        {% if order.Importe %}
+                            <span class="badge bg-success">{{ order.Importe }}€</span>
+                        {% endif %}
+                    </div>
+                    <div class="kanban-card-actions mt-2">
+                        <div class="mb-2">
+                            <small class="text-muted fw-semibold">Forma de pago:</small>
+                            <div class="pago-radios">
+                                {% for pago in payment_options %}
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio"
+                                           name="pago_{{ order.ID }}"
+                                           id="pago_{{ order.ID }}_{{ loop.index }}"
+                                           value="{{ pago }}"
+                                           {% if loop.first %}checked{% endif %}>
+                                    <label class="form-check-label small" for="pago_{{ order.ID }}_{{ loop.index }}">{{ pago }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-warning btn-sm flex-fill"
+                                    onclick="moveBackward({{ order.ID }}, 3)">
+                                <i class="bi bi-arrow-left-circle me-1"></i>Retroceder
+                            </button>
+                            <button class="btn btn-success btn-sm flex-fill"
+                                    onclick="moveForward({{ order.ID }}, 3, null, 'pago_{{ order.ID }}')">
+                                <i class="bi bi-check-circle me-1"></i>Entregar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="kanban-empty">
+                    <i class="bi bi-check2-circle"></i>
+                    <p>Sin pedidos para entregar</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Kanban search filter
+document.querySelectorAll('.kanban-search').forEach(function(input) {
+    input.addEventListener('input', function() {
+        const targetId = this.dataset.target;
+        const query = this.value.toLowerCase().trim();
+        const cards = document.querySelectorAll('#' + targetId + ' .kanban-card');
+        cards.forEach(function(card) {
+            const text = (card.dataset.search || '').toLowerCase();
+            card.style.display = (query === '' || text.includes(query)) ? '' : 'none';
+        });
+    });
+});
+
+function moveForward(orderId, stage, costurName, pagoName) {
+    const body = { stage: stage };
+
+    if (costurName) {
+        const selected = document.querySelector('input[name="' + costurName + '"]:checked');
+        if (!selected) {
+            alert('Por favor selecciona una costurera antes de enviar.');
+            return;
+        }
+        body.costurera = selected.value;
+    }
+
+    if (pagoName) {
+        const selected = document.querySelector('input[name="' + pagoName + '"]:checked');
+        if (selected) {
+            body.pago = selected.value;
+        }
+    }
+
+    fetch('/api/orders/' + orderId + '/move_forward', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Error desconocido'));
+        }
+    })
+    .catch(function(err) {
+        alert('Error de red: ' + err.message);
+    });
+}
+
+function moveBackward(orderId, stage) {
+    if (!confirm('¿Estás segura de que quieres retroceder este pedido?')) return;
+
+    fetch('/api/orders/' + orderId + '/move_backward', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: stage })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Error desconocido'));
+        }
+    })
+    .catch(function(err) {
+        alert('Error de red: ' + err.message);
+    });
+}
+</script>
+{% endblock %}

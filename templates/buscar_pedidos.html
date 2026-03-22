@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}Buscar Pedidos - El Taller de Marta{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2 class="page-title"><i class="bi bi-search me-2"></i>Buscar Pedidos</h2>
+    <span class="text-muted">Búsqueda avanzada de pedidos</span>
+</div>
+
+<!-- Search Form -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header fw-semibold">
+        <i class="bi bi-funnel me-2"></i>Filtros de búsqueda
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('buscar_pedidos_search') }}">
+            <div class="row g-3">
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                    <label class="form-label">Cliente</label>
+                    <input type="text" class="form-control" name="cliente"
+                           value="{{ filters.cliente if filters else '' }}" placeholder="Nombre del cliente">
+                </div>
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                    <label class="form-label">Artículo</label>
+                    <input type="text" class="form-control" name="articulo"
+                           value="{{ filters.articulo if filters else '' }}" placeholder="Nombre del artículo">
+                </div>
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                    <label class="form-label">Costurera</label>
+                    <select class="form-select" name="proveedor">
+                        <option value="">Todas</option>
+                        {% for c in costureras %}
+                        <option value="{{ c }}" {% if filters and filters.proveedor == c %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                    <label class="form-label">Estado de pago</label>
+                    <select class="form-select" name="pagado">
+                        <option value="">Todos</option>
+                        {% for p in payment_options %}
+                        <option value="{{ p }}" {% if filters and filters.pagado == p %}selected{% endif %}>{{ p }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                    <label class="form-label">Entrega desde</label>
+                    <input type="date" class="form-control" name="fecha_desde"
+                           value="{{ filters.fecha_desde if filters else '' }}">
+                </div>
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                    <label class="form-label">Entrega hasta</label>
+                    <input type="date" class="form-control" name="fecha_hasta"
+                           value="{{ filters.fecha_hasta if filters else '' }}">
+                </div>
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-end">
+                    <div class="form-check mb-1">
+                        <input class="form-check-input" type="checkbox" name="solo_activos" id="soloActivos"
+                               {% if filters and filters.solo_activos %}checked{% endif %}>
+                        <label class="form-check-label" for="soloActivos">Solo pedidos activos</label>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search me-1"></i>Buscar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Results -->
+{% if searched %}
+<div class="card shadow-sm">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span class="fw-semibold">Resultados ({{ pedidos|length }})</span>
+        {% if pedidos %}
+        <input type="text" class="form-control form-control-sm w-auto" id="searchTable"
+               placeholder="Filtrar resultados..." style="min-width:200px">
+        {% endif %}
+    </div>
+    <div class="card-body p-0">
+        {% if pedidos %}
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0" id="tablaPedidos">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Cliente</th>
+                        <th>Artículo</th>
+                        <th>Descripción</th>
+                        <th>Costurera</th>
+                        <th>Entrega</th>
+                        <th>Pagado</th>
+                        <th class="text-end">Importe</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in pedidos %}
+                    <tr id="row-ped-{{ p.ID }}">
+                        <td class="text-muted small">{{ p.ID }}</td>
+                        <td>{{ p.Cliente or '' }}</td>
+                        <td>{{ p.Articulo or '' }}</td>
+                        <td>{{ p.Descripcion or '' }}</td>
+                        <td>{{ p.Proveedor or '' }}</td>
+                        <td>{{ p.Entrega_Cliente or '' }}</td>
+                        <td>
+                            {% if p.Pagado == 'No Pagado' %}
+                                <span class="badge bg-danger">No Pagado</span>
+                            {% elif p.Pagado == 'Efectivo' %}
+                                <span class="badge bg-success">Efectivo</span>
+                            {% elif p.Pagado == 'Tarjeta' %}
+                                <span class="badge bg-primary">Tarjeta</span>
+                            {% elif p.Pagado == 'Bizum' %}
+                                <span class="badge bg-info text-dark">Bizum</span>
+                            {% else %}
+                                {{ p.Pagado or '' }}
+                            {% endif %}
+                        </td>
+                        <td class="text-end">{{ '%.2f€'|format(p.Importe|float) if p.Importe is not none else '—' }}</td>
+                        <td class="text-center">
+                            <button class="btn btn-outline-primary btn-sm me-1"
+                                    onclick="openEditPedido({{ p|tojson }})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm"
+                                    onclick="deletePedido({{ p.ID }})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-search display-4 d-block mb-2"></i>
+            <p>No se encontraron pedidos con los filtros indicados.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editPedidoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Editar Pedido</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editPedidoId">
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Cliente</label>
+                        <select class="form-select" id="editClienteId">
+                            {% for c in clients %}
+                            <option value="{{ c.ID }}">{{ c.Nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <label class="form-label">Artículo</label>
+                        <select class="form-select" id="editArticuloId">
+                            {% for a in articles %}
+                            <option value="{{ a.ID }}">{{ a.Articulo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control" id="editDescripcion" rows="2"></textarea>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Cantidad</label>
+                        <input type="number" class="form-control" id="editCantidad" min="1">
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Costurera</label>
+                        <select class="form-select" id="editProveedor">
+                            <option value="">Sin asignar</option>
+                            {% for c in costureras %}
+                            <option value="{{ c }}">{{ c }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Pagado</label>
+                        <select class="form-select" id="editPagado">
+                            {% for p in payment_options %}
+                            <option value="{{ p }}">{{ p }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="form-label">Importe</label>
+                        <input type="number" class="form-control" id="editImporte" step="0.01">
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Coste Material</label>
+                        <input type="number" class="form-control" id="editCosteMaterial" step="0.01">
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Coste Proveedor</label>
+                        <input type="number" class="form-control" id="editCosteProveedor" step="0.01">
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Fecha Entrega Cliente</label>
+                        <input type="date" class="form-control" id="editEntregaCliente">
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Límite</label>
+                        <input type="date" class="form-control" id="editLimite">
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Entrega Proveedor</label>
+                        <input type="date" class="form-control" id="editEntregaProveedor">
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Recogida Proveedor</label>
+                        <input type="date" class="form-control" id="editRecogidaProveedor">
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Recogida Cliente</label>
+                        <input type="date" class="form-control" id="editRecogidaCliente">
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label">Pago Proveedor</label>
+                        <input type="date" class="form-control" id="editPagoProveedor">
+                    </div>
+                </div>
+                <div id="editPedidoAlert" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveEditPedido()">
+                    <i class="bi bi-check-circle me-1"></i>Guardar cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const editPedidoModal = new bootstrap.Modal(document.getElementById('editPedidoModal'));
+
+{% if searched and pedidos %}
+document.getElementById('searchTable').addEventListener('input', function() {
+    const query = this.value.toLowerCase();
+    document.querySelectorAll('#tablaPedidos tbody tr').forEach(function(row) {
+        row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+    });
+});
+{% endif %}
+
+function openEditPedido(p) {
+    document.getElementById('editPedidoId').value = p.ID;
+    document.getElementById('editClienteId').value = p.Cliente_id || '';
+    document.getElementById('editArticuloId').value = p.Articulo_id || '';
+    document.getElementById('editDescripcion').value = p.Descripcion || '';
+    document.getElementById('editCantidad').value = p.Cantidad || '';
+    document.getElementById('editProveedor').value = p.Proveedor || '';
+    document.getElementById('editPagado').value = p.Pagado || 'No Pagado';
+    document.getElementById('editImporte').value = p.Importe || '';
+    document.getElementById('editCosteMaterial').value = p.Coste_Material || '';
+    document.getElementById('editCosteProveedor').value = p.Coste_Proveedor || '';
+    document.getElementById('editEntregaCliente').value = p.Entrega_Cliente || '';
+    document.getElementById('editLimite').value = p.Limite || '';
+    document.getElementById('editEntregaProveedor').value = p.Entrega_Proveedor || '';
+    document.getElementById('editRecogidaProveedor').value = p.Recogida_Proveedor || '';
+    document.getElementById('editRecogidaCliente').value = p.Recogida_Cliente || '';
+    document.getElementById('editPagoProveedor').value = p.Pago_Proveedor || '';
+    document.getElementById('editPedidoAlert').innerHTML = '';
+    editPedidoModal.show();
+}
+
+function saveEditPedido() {
+    const id = document.getElementById('editPedidoId').value;
+    const data = {
+        Cliente_id: document.getElementById('editClienteId').value || null,
+        Articulo_id: document.getElementById('editArticuloId').value || null,
+        Descripcion: document.getElementById('editDescripcion').value || null,
+        Cantidad: document.getElementById('editCantidad').value || null,
+        Proveedor: document.getElementById('editProveedor').value || null,
+        Pagado: document.getElementById('editPagado').value || null,
+        Importe: document.getElementById('editImporte').value || null,
+        Coste_Material: document.getElementById('editCosteMaterial').value || null,
+        Coste_Proveedor: document.getElementById('editCosteProveedor').value || null,
+        Entrega_Cliente: document.getElementById('editEntregaCliente').value || null,
+        Limite: document.getElementById('editLimite').value || null,
+        Entrega_Proveedor: document.getElementById('editEntregaProveedor').value || null,
+        Recogida_Proveedor: document.getElementById('editRecogidaProveedor').value || null,
+        Recogida_Cliente: document.getElementById('editRecogidaCliente').value || null,
+        Pago_Proveedor: document.getElementById('editPagoProveedor').value || null
+    };
+
+    fetch('/api/pedidos/' + id + '/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(result) {
+        if (result.success) {
+            editPedidoModal.hide();
+            window.location.reload();
+        } else {
+            document.getElementById('editPedidoAlert').innerHTML =
+                '<div class="alert alert-danger py-2">' + (result.error || 'Error') + '</div>';
+        }
+    })
+    .catch(function(err) {
+        document.getElementById('editPedidoAlert').innerHTML =
+            '<div class="alert alert-danger py-2">Error de red: ' + err.message + '</div>';
+    });
+}
+
+function deletePedido(id) {
+    if (!confirm('¿Estás segura de que quieres eliminar este pedido?')) return;
+    fetch('/api/pedidos/' + id + '/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.success) {
+            const row = document.getElementById('row-ped-' + id);
+            if (row) row.remove();
+        } else {
+            alert('Error: ' + (data.error || 'Error desconocido'));
+        }
+    })
+    .catch(function(err) {
+        alert('Error de red: ' + err.message);
+    });
+}
+</script>
+{% endblock %}

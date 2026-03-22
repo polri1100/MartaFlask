@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Artículos - El Taller de Marta{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2 class="page-title"><i class="bi bi-tags me-2"></i>Artículos</h2>
+    <span class="text-muted">Catálogo de artículos disponibles</span>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex align-items-center justify-content-between">
+        <span class="fw-semibold">Lista de Artículos ({{ articulos|length }})</span>
+        <input type="text" class="form-control form-control-sm w-auto" id="searchArticulos"
+               placeholder="Buscar artículo..." style="min-width:220px">
+    </div>
+    <div class="card-body p-0">
+        {% if articulos %}
+        <div class="table-responsive">
+            <table class="table table-hover table-striped mb-0" id="tablaArticulos">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Artículo</th>
+                        <th>Descripción</th>
+                        <th class="text-end">Coste Material</th>
+                        <th class="text-end">Coste Proveedor</th>
+                        <th class="text-end">Importe</th>
+                        <th class="text-center">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for art in articulos %}
+                    <tr id="row-art-{{ art.ID }}">
+                        <td class="text-muted small">{{ art.ID }}</td>
+                        <td><strong>{{ art.Articulo or '' }}</strong></td>
+                        <td>{{ art.Descripcion or '' }}</td>
+                        <td class="text-end">{{ '%.2f€'|format(art.Coste_Material_Sugerido|float) if art.Coste_Material_Sugerido is not none else '—' }}</td>
+                        <td class="text-end">{{ '%.2f€'|format(art.Coste_Proveedor_Sugerido|float) if art.Coste_Proveedor_Sugerido is not none else '—' }}</td>
+                        <td class="text-end">{{ '%.2f€'|format(art.Importe_Sugerido|float) if art.Importe_Sugerido is not none else '—' }}</td>
+                        <td class="text-center">
+                            <button class="btn btn-outline-danger btn-sm"
+                                    onclick="deleteArticulo({{ art.ID }})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-tags display-4 d-block mb-2"></i>
+            <p>No hay artículos disponibles.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('searchArticulos').addEventListener('input', function() {
+    const query = this.value.toLowerCase();
+    document.querySelectorAll('#tablaArticulos tbody tr').forEach(function(row) {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(query) ? '' : 'none';
+    });
+});
+
+function deleteArticulo(id) {
+    if (!confirm('¿Estás segura de que quieres eliminar este artículo?')) return;
+    fetch('/api/articulos/' + id + '/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.success) {
+            const row = document.getElementById('row-art-' + id);
+            if (row) row.remove();
+        } else {
+            alert('Error al eliminar: ' + (data.error || 'Error desconocido'));
+        }
+    })
+    .catch(function(err) {
+        alert('Error de red: ' + err.message);
+    });
+}
+</script>
+{% endblock %}

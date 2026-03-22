@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Clientes - El Taller de Marta{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2 class="page-title"><i class="bi bi-people me-2"></i>Clientes</h2>
+    <span class="text-muted">Gestión de clientes</span>
+</div>
+
+<div class="row g-3 mb-4">
+    <!-- Insert Form -->
+    <div class="col-12 col-md-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold">
+                <i class="bi bi-person-plus me-2"></i>Nuevo Cliente
+            </div>
+            <div class="card-body">
+                <div id="insertAlert"></div>
+                <div class="mb-3">
+                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="newNombre" placeholder="Nombre del cliente">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-control" id="newDescripcion" rows="2" placeholder="Descripción opcional"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Teléfono</label>
+                    <input type="text" class="form-control" id="newTelefono" placeholder="Número de teléfono">
+                </div>
+                <button class="btn btn-primary w-100" onclick="insertCliente()">
+                    <i class="bi bi-plus-circle me-1"></i>Añadir Cliente
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="col-12 col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <span class="fw-semibold">Lista de Clientes ({{ clientes|length }})</span>
+                <input type="text" class="form-control form-control-sm w-auto" id="searchClientes"
+                       placeholder="Buscar cliente..." style="min-width:220px">
+            </div>
+            <div class="card-body p-0">
+                {% if clientes %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0" id="tablaClientes">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Teléfono</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in clientes %}
+                            <tr id="row-cli-{{ c.ID }}">
+                                <td class="text-muted small">{{ c.ID }}</td>
+                                <td><strong>{{ c.Nombre or '' }}</strong></td>
+                                <td>{{ c.Descripcion or '' }}</td>
+                                <td>{{ c.Telefono or '' }}</td>
+                                <td class="text-center">
+                                    <button class="btn btn-outline-primary btn-sm me-1"
+                                            onclick="openEditModal({{ c.ID }}, '{{ (c.Nombre or '')|replace("'", "\\'") }}', '{{ (c.Descripcion or '')|replace("'", "\\'") }}', '{{ (c.Telefono or '')|replace("'", "\\'") }}')">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm"
+                                            onclick="deleteCliente({{ c.ID }})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-people display-4 d-block mb-2"></i>
+                    <p>No hay clientes registrados.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Editar Cliente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editClienteId">
+                <div class="mb-3">
+                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="editNombre">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-control" id="editDescripcion" rows="2"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Teléfono</label>
+                    <input type="text" class="form-control" id="editTelefono">
+                </div>
+                <div id="editAlert"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="saveEditCliente()">
+                    <i class="bi bi-check-circle me-1"></i>Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+
+document.getElementById('searchClientes').addEventListener('input', function() {
+    const query = this.value.toLowerCase();
+    document.querySelectorAll('#tablaClientes tbody tr').forEach(function(row) {
+        row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+    });
+});
+
+function insertCliente() {
+    const nombre = document.getElementById('newNombre').value.trim();
+    const descripcion = document.getElementById('newDescripcion').value.trim();
+    const telefono = document.getElementById('newTelefono').value.trim();
+    const alertEl = document.getElementById('insertAlert');
+
+    if (!nombre) {
+        alertEl.innerHTML = '<div class="alert alert-danger alert-sm py-2">El nombre es obligatorio.</div>';
+        return;
+    }
+
+    fetch('/api/clientes/insert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: nombre, descripcion: descripcion, telefono: telefono })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.success) {
+            alertEl.innerHTML = '<div class="alert alert-success py-2">Cliente añadido correctamente.</div>';
+            document.getElementById('newNombre').value = '';
+            document.getElementById('newDescripcion').value = '';
+            document.getElementById('newTelefono').value = '';
+            setTimeout(function() { window.location.reload(); }, 800);
+        } else {
+            alertEl.innerHTML = '<div class="alert alert-danger py-2">' + (data.error || 'Error desconocido') + '</div>';
+        }
+    })
+    .catch(function(err) {
+        alertEl.innerHTML = '<div class="alert alert-danger py-2">Error de red: ' + err.message + '</div>';
+    });
+}
+
+function openEditModal(id, nombre, descripcion, telefono) {
+    document.getElementById('editClienteId').value = id;
+    document.getElementById('editNombre').value = nombre;
+    document.getElementById('editDescripcion').value = descripcion;
+    document.getElementById('editTelefono').value = telefono;
+    document.getElementById('editAlert').innerHTML = '';
+    editModal.show();
+}
+
+function saveEditCliente() {
+    const id = document.getElementById('editClienteId').value;
+    const nombre = document.getElementById('editNombre').value.trim();
+    const descripcion = document.getElementById('editDescripcion').value.trim();
+    const telefono = document.getElementById('editTelefono').value.trim();
+    const alertEl = document.getElementById('editAlert');
+
+    if (!nombre) {
+        alertEl.innerHTML = '<div class="alert alert-danger py-2">El nombre es obligatorio.</div>';
+        return;
+    }
+
+    fetch('/api/clientes/' + id + '/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Nombre: nombre, Descripcion: descripcion, Telefono: telefono })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.success) {
+            editModal.hide();
+            window.location.reload();
+        } else {
+            alertEl.innerHTML = '<div class="alert alert-danger py-2">' + (data.error || 'Error') + '</div>';
+        }
+    })
+    .catch(function(err) {
+        alertEl.innerHTML = '<div class="alert alert-danger py-2">Error de red: ' + err.message + '</div>';
+    });
+}
+
+function deleteCliente(id) {
+    if (!confirm('¿Estás segura de que quieres eliminar este cliente?')) return;
+    fetch('/api/clientes/' + id + '/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.success) {
+            const row = document.getElementById('row-cli-' + id);
+            if (row) row.remove();
+        } else {
+            alert('Error: ' + (data.error || 'Error desconocido'));
+        }
+    })
+    .catch(function(err) {
+        alert('Error de red: ' + err.message);
+    });
+}
+</script>
+{% endblock %}
