@@ -9,6 +9,7 @@ from database import init_db
 import pandas as pd
 import datetime
 import json
+from datetime import datetime, date
 
 # Allow OAuth over plain HTTP on localhost
 os.environ.setdefault('OAUTHLIB_INSECURE_TRANSPORT', '1')
@@ -124,23 +125,34 @@ def clientes():
 @login_required
 def buscar_pedidos():
     try:
+        orders_df = f.get_orders_data()
         clients_df = f.get_clients_data()
         articles_df = f.get_articles_data()
+        joined = f.ordersJoin(orders_df.copy(), clients_df.copy(), articles_df.copy())
+
+        if 'ID' in joined.columns:
+            all_orders_df = joined.sort_values(by='ID', ascending=False)
+        else:
+            all_orders_df = joined.sort_index(ascending=False)
+
         clients = df_to_records(clients_df)
         articles = df_to_records(articles_df)
+        pedidos = df_to_records(all_orders_df)
+
         return render_template(
             'buscar_pedidos.html',
-            pedidos=[],
+            pedidos=pedidos, 
             clients=clients,
             articles=articles,
             costureras=COSTURERAS,
             payment_options=PAYMENT_OPTIONS,
-            searched=False
+            searched=False, 
+            filters={}
         )
     except Exception as e:
-        flash(f'Error: {str(e)}', 'danger')
-        return render_template('buscar_pedidos.html', pedidos=[], clients=[], articles=[], costureras=COSTURERAS, payment_options=PAYMENT_OPTIONS, searched=False)
-
+        flash(f'Error al cargar la página: {str(e)}', 'danger')
+        return render_template('buscar_pedidos.html', pedidos=[], clients=[], articles=[])
+    
 
 @app.route('/buscar-pedidos/search', methods=['POST'])
 @login_required
@@ -170,9 +182,11 @@ def buscar_pedidos_search():
         if pagado_filter:
             df = df[df['Pagado'] == pagado_filter]
         if fecha_desde:
-            df = df[df['Entrega_Cliente'] >= fecha_desde]
+            fecha_desde_obj = datetime.strptime(fecha_desde, '%Y-%m-%d').date()
+            df = df[df['Entrega_Cliente'] >= fecha_desde_obj]
         if fecha_hasta:
-            df = df[df['Entrega_Cliente'] <= fecha_hasta]
+            fecha_hasta_obj = datetime.strptime(fecha_hasta, '%Y-%m-%d').date()
+            df = df[df['Entrega_Cliente'] <= fecha_hasta_obj]
         if solo_activos:
             df = df[df['Recogida_Cliente'].isna()]
 
@@ -212,8 +226,9 @@ def insertar_pedidos():
         orders_df = f.get_orders_data()
         joined = f.ordersJoin(orders_df.copy(), clients_df.copy(), articles_df.copy())
 
-        today_str = datetime.date.today().isoformat()
-        today_orders = joined[joined['Entrega_Cliente'] == today_str] if 'Entrega_Cliente' in joined.columns else pd.DataFrame()
+        today_date = date.today()
+        today_str = today_date.isoformat()
+        today_orders = joined[joined['Entrega_Cliente'] == today_date] if 'Entrega_Cliente' in joined.columns else pd.DataFrame()
 
         clients = df_to_records(clients_df)
         articles = df_to_records(articles_df)

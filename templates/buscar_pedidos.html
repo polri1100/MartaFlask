@@ -10,72 +10,83 @@
 
 <!-- Search Form -->
 <div class="card shadow-sm mb-4">
-    <div class="card-header fw-semibold">
-        <i class="bi bi-funnel me-2"></i>Filtros de búsqueda
+    <div class="card-header fw-semibold d-flex justify-content-between align-items-center" 
+         data-bs-toggle="collapse" data-bs-target="#advancedSearchForm" style="cursor: pointer;">
+        <div><i class="bi bi-funnel me-2"></i>Filtros de búsqueda avanzada</div>
+        <i class="bi bi-chevron-down"></i>
     </div>
-    <div class="card-body">
-        <form method="POST" action="{{ url_for('buscar_pedidos_search') }}">
-            <div class="row g-3">
-                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                    <label class="form-label">Cliente</label>
-                    <input type="text" class="form-control" name="cliente"
-                           value="{{ filters.cliente if filters else '' }}" placeholder="Nombre del cliente">
-                </div>
-                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                    <label class="form-label">Artículo</label>
-                    <input type="text" class="form-control" name="articulo"
-                           value="{{ filters.articulo if filters else '' }}" placeholder="Nombre del artículo">
-                </div>
-                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                    <label class="form-label">Costurera</label>
-                    <select class="form-select" name="proveedor">
-                        <option value="">Todas</option>
-                        {% for c in costureras %}
-                        <option value="{{ c }}" {% if filters and filters.proveedor == c %}selected{% endif %}>{{ c }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                    <label class="form-label">Estado de pago</label>
-                    <select class="form-select" name="pagado">
-                        <option value="">Todos</option>
-                        {% for p in payment_options %}
-                        <option value="{{ p }}" {% if filters and filters.pagado == p %}selected{% endif %}>{{ p }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                    <label class="form-label">Entrega desde</label>
-                    <input type="date" class="form-control" name="fecha_desde"
-                           value="{{ filters.fecha_desde if filters else '' }}">
-                </div>
-                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                    <label class="form-label">Entrega hasta</label>
-                    <input type="date" class="form-control" name="fecha_hasta"
-                           value="{{ filters.fecha_hasta if filters else '' }}">
-                </div>
-                <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-end">
-                    <div class="form-check mb-1">
-                        <input class="form-check-input" type="checkbox" name="solo_activos" id="soloActivos"
-                               {% if filters and filters.solo_activos %}checked{% endif %}>
-                        <label class="form-check-label" for="soloActivos">Solo pedidos activos</label>
+    
+    <div class="collapse {% if searched %}show{% endif %}" id="advancedSearchForm">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('buscar_pedidos_search') }}">
+                <div class="row g-3">
+                    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                        <label class="form-label">Cliente</label>
+                        <input type="text" class="form-control" name="cliente"
+                               value="{{ filters.cliente if filters else '' }}" placeholder="Nombre del cliente">
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                        <label class="form-label">Artículo</label>
+                        <input type="text" class="form-control" name="articulo"
+                               value="{{ filters.articulo if filters else '' }}" placeholder="Nombre del artículo">
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                        <label class="form-label">Costurera</label>
+                        <select class="form-select" name="proveedor">
+                            <option value="">Todas</option>
+                            {% for c in costureras %}
+                            <option value="{{ c }}" {% if filters and filters.proveedor == c %}selected{% endif %}>{{ c }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                        <label class="form-label">Estado de pago</label>
+                        <select class="form-select" name="pagado">
+                            <option value="">Todos</option>
+                            {% for p in payment_options %}
+                            <option value="{{ p }}" {% if filters and filters.pagado == p %}selected{% endif %}>{{ p }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                        <label class="form-label">Entrega desde</label>
+                        <input type="date" class="form-control" name="fecha_desde"
+                               value="{{ filters.fecha_desde if filters else '' }}">
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                        <label class="form-label">Entrega hasta</label>
+                        <input type="date" class="form-control" name="fecha_hasta"
+                               value="{{ filters.fecha_hasta if filters else '' }}">
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-end">
+                        <div class="form-check mb-1">
+                            <input class="form-check-input" type="checkbox" name="solo_activos" id="soloActivos"
+                                   {% if filters and filters.solo_activos %}checked{% endif %}>
+                            <label class="form-check-label" for="soloActivos">Solo pedidos activos</label>
+                        </div>
+                    </div>
+                    <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-search me-1"></i>Buscar
+                        </button>
                     </div>
                 </div>
-                <div class="col-12 col-sm-6 col-md-4 col-lg-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search me-1"></i>Buscar
-                    </button>
-                </div>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 
 <!-- Results -->
-{% if searched %}
+{% if searched or pedidos %}
 <div class="card shadow-sm">
     <div class="card-header d-flex align-items-center justify-content-between">
-        <span class="fw-semibold">Resultados ({{ pedidos|length }})</span>
+        <span class="fw-semibold">
+            {% if searched %}
+                Resultados ({{ pedidos|length }})
+            {% else %}
+                Todos los Pedidos ({{ pedidos|length }})
+            {% endif %}
+        </span>
         {% if pedidos %}
         <input type="text" class="form-control form-control-sm w-auto" id="searchTable"
                placeholder="Filtrar resultados..." style="min-width:200px">
@@ -252,14 +263,17 @@
 <script>
 const editPedidoModal = new bootstrap.Modal(document.getElementById('editPedidoModal'));
 
-{% if searched and pedidos %}
-document.getElementById('searchTable').addEventListener('input', function() {
-    const query = this.value.toLowerCase();
-    document.querySelectorAll('#tablaPedidos tbody tr').forEach(function(row) {
-        row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
-    });
+document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.getElementById('searchTable');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase();
+            document.querySelectorAll('#tablaPedidos tbody tr').forEach(function(row) {
+                row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
+            });
+        });
+    }
 });
-{% endif %}
 
 function openEditPedido(p) {
     document.getElementById('editPedidoId').value = p.ID;
