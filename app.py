@@ -1,9 +1,11 @@
 from flask import Flask, render_template, redirect, url_for, session, request, jsonify, flash
-from authlib.integrations.flask_client import OAuth
 from functools import wraps
 import os
+import webbrowser
+import threading
 from dotenv import load_dotenv
 import functions as f
+from database import init_db
 import pandas as pd
 import datetime
 import json
@@ -11,16 +13,7 @@ import json
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'change-me-in-production')
-
-oauth = OAuth(app)
-google = oauth.register(
-    name='google',
-    client_id=os.environ.get('GOOGLE_CLIENT_ID'),
-    client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
-    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-    client_kwargs={'scope': 'openid email profile'}
-)
+app.secret_key = os.environ.get('SECRET_KEY', 'local-secret-key-change-me')
 
 COSTURERAS = ['Alicia', 'Dani', 'Manuela', 'Mari', 'Marlen', 'M.Antonia', 'Marta']
 PAYMENT_OPTIONS = ['No Pagado', 'Efectivo', 'Tarjeta', 'Bizum']
@@ -29,15 +22,10 @@ PAYMENT_OPTIONS = ['No Pagado', 'Efectivo', 'Tarjeta', 'Bizum']
 def login_required(func):
     @wraps(func)
     def decorated(*args, **kwargs):
-        if 'user_email' not in session:
+        if 'logged_in' not in session:
             return redirect(url_for('login'))
         return func(*args, **kwargs)
     return decorated
-
-
-def get_authorized_emails():
-    emails_str = os.environ.get('AUTHORIZED_EMAILS', '')
-    return [e.strip().lower() for e in emails_str.split(',') if e.strip()]
 
 
 def df_to_records(df):
@@ -49,37 +37,18 @@ def df_to_records(df):
 
 # ─── Auth Routes ──────────────────────────────────────────────────────────────
 
-@app.route('/login')
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    if 'user_email' in session:
+    if 'logged_in' in session:
         return redirect(url_for('home'))
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        correct = os.environ.get('APP_PASSWORD', 'marta1234')
+        if password == correct:
+            session['logged_in'] = True
+            return redirect(url_for('home'))
+        flash('Contraseña incorrecta', 'danger')
     return render_template('login.html')
-
-
-@app.route('/auth/google')
-def auth_google():
-    redirect_uri = url_for('auth_callback', _external=True)
-    return google.authorize_redirect(redirect_uri)
-
-
-@app.route('/auth/callback')
-def auth_callback():
-    token = google.authorize_access_token()
-    user_info = token.get('userinfo')
-    if not user_info:
-        flash('No se pudo obtener información del usuario.', 'danger')
-        return redirect(url_for('login'))
-
-    email = user_info.get('email', '').lower()
-    authorized = get_authorized_emails()
-
-    if authorized and email not in authorized:
-        flash('No estás autorizado para acceder a esta aplicación.', 'danger')
-        return redirect(url_for('login'))
-
-    session['user_email'] = email
-    session['user_name'] = user_info.get('name', email)
-    return redirect(url_for('home'))
 
 
 @app.route('/logout')
@@ -572,5 +541,12 @@ def api_proveedores_pagar():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 
+def open_browser():
+    webbrowser.open('http://localhost:5000')
+
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    init_db()
+    # Open browser after 1 second to let Flask start
+    threading.Timer(1.0, open_browser).start()
+    app.run(debug=False, host='127.0.0.1', port=5000)
