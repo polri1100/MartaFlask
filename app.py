@@ -10,6 +10,9 @@ import pandas as pd
 import datetime
 import json
 
+# Allow OAuth over plain HTTP on localhost
+os.environ.setdefault('OAUTHLIB_INSECURE_TRANSPORT', '1')
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -540,6 +543,68 @@ def api_proveedores_pagar():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
+
+# ─── Backup Routes ────────────────────────────────────────────────────────────
+
+@app.route('/backup')
+@login_required
+def backup():
+    import backup as bk
+    authorized = bk.is_authorized()
+    history = bk.get_backup_history() if authorized else []
+    return render_template('backup.html', authorized=authorized, history=history)
+
+
+@app.route('/backup/authorize')
+@login_required
+def backup_authorize():
+    import backup as bk
+    flow = bk.get_flow()
+    auth_url, state = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true',
+        prompt='consent'
+    )
+    session['oauth_state'] = state
+    return redirect(auth_url)
+
+
+@app.route('/backup/oauth2callback')
+@login_required
+def backup_oauth2callback():
+    import backup as bk
+    try:
+        flow = bk.get_flow()
+        flow.fetch_token(authorization_response=request.url)
+        bk.save_credentials(flow.credentials)
+        flash('Google Drive conectado correctamente.', 'success')
+    except Exception as e:
+        flash(f'Error al conectar con Google Drive: {str(e)}', 'danger')
+    return redirect(url_for('backup'))
+
+
+@app.route('/backup/disconnect', methods=['POST'])
+@login_required
+def backup_disconnect():
+    import backup as bk
+    bk.disconnect()
+    flash('Google Drive desconectado.', 'info')
+    return redirect(url_for('backup'))
+
+
+@app.route('/api/backup/run', methods=['POST'])
+@login_required
+def api_backup_run():
+    import backup as bk
+    try:
+        db_path = os.path.join(os.path.dirname(__file__), 'data', 'marta.db')
+        result = bk.run_backup(db_path)
+        return jsonify({'success': True, **result})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 
 def open_browser():
     webbrowser.open('http://localhost:5000')

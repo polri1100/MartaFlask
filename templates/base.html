@@ -70,6 +70,13 @@
             </div>
 
             <div class="sidebar-section">
+                <div class="sidebar-section-title">Seguridad</div>
+                <a href="{{ url_for('backup') }}" class="sidebar-link {% if request.endpoint == 'backup' %}active{% endif %}">
+                    <i class="bi bi-cloud-upload me-2"></i>Copia de Seguridad
+                </a>
+            </div>
+
+            <div class="sidebar-section">
                 <div class="sidebar-section-title">Cuenta</div>
                 <a href="{{ url_for('logout') }}" class="sidebar-link text-danger-soft">
                     <i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión
