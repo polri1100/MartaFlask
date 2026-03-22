@@ -9,7 +9,7 @@ from database import init_db
 import pandas as pd
 import datetime
 import json
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 # Allow OAuth over plain HTTP on localhost
 os.environ.setdefault('OAUTHLIB_INSECURE_TRANSPORT', '1')
@@ -121,7 +121,7 @@ def clientes():
         return render_template('clientes.html', clientes=[])
 
 
-@app.route('/buscar-pedidos')
+@app.route('/buscar-pedidos', methods=['GET'])
 @login_required
 def buscar_pedidos():
     try:
@@ -130,14 +130,22 @@ def buscar_pedidos():
         articles_df = f.get_articles_data()
         joined = f.ordersJoin(orders_df.copy(), clients_df.copy(), articles_df.copy())
 
-        if 'ID' in joined.columns:
-            all_orders_df = joined.sort_values(by='ID', ascending=False)
+        two_months_ago = date.today() - timedelta(days=60)
+
+        if 'Entrega_Cliente' in joined.columns:
+            mask = (joined['Entrega_Cliente'] >= two_months_ago) | (joined['Entrega_Cliente'].isna())
+            filtered_df = joined[mask]
         else:
-            all_orders_df = joined.sort_index(ascending=False)
+            filtered_df = joined
+
+        if 'ID' in filtered_df.columns:
+            recent_orders_df = filtered_df.sort_values(by='ID', ascending=False)
+        else:
+            recent_orders_df = filtered_df.sort_index(ascending=False)
 
         clients = df_to_records(clients_df)
         articles = df_to_records(articles_df)
-        pedidos = df_to_records(all_orders_df)
+        pedidos = df_to_records(recent_orders_df)
 
         return render_template(
             'buscar_pedidos.html',

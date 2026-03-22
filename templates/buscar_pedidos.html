@@ -3,12 +3,11 @@
 {% block title %}Buscar Pedidos - El Taller de Marta{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<div class="page-header mb-4">
     <h2 class="page-title"><i class="bi bi-search me-2"></i>Buscar Pedidos</h2>
-    <span class="text-muted">Búsqueda avanzada de pedidos</span>
+    <span class="text-muted">Búsqueda avanzada y últimos pedidos</span>
 </div>
 
-<!-- Search Form -->
 <div class="card shadow-sm mb-4">
     <div class="card-header fw-semibold d-flex justify-content-between align-items-center" 
          data-bs-toggle="collapse" data-bs-target="#advancedSearchForm" style="cursor: pointer;">
@@ -76,69 +75,113 @@
     </div>
 </div>
 
-<!-- Results -->
 {% if searched or pedidos %}
+
+{% if pedidos %}
+<div class="row justify-content-center mb-4 mt-2">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="input-group input-group-lg shadow-sm">
+            <span class="input-group-text bg-white text-muted border-end-0">
+                <i class="bi bi-search"></i>
+            </span>
+            <input type="text" class="form-control border-start-0 ps-0" id="searchTable"
+                   placeholder="Filtrar resultados en esta tabla...">
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="card shadow-sm">
     <div class="card-header d-flex align-items-center justify-content-between">
         <span class="fw-semibold">
             {% if searched %}
-                Resultados ({{ pedidos|length }})
+                Resultados Búsqueda Avanzada ({{ pedidos|length }})
             {% else %}
-                Todos los Pedidos ({{ pedidos|length }})
+                Últimos 2 Meses ({{ pedidos|length }})
             {% endif %}
         </span>
-        {% if pedidos %}
-        <input type="text" class="form-control form-control-sm w-auto" id="searchTable"
-               placeholder="Filtrar resultados..." style="min-width:200px">
+        
+        {% if searched %}
+        <a href="{{ url_for('buscar_pedidos') }}" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Limpiar Búsqueda
+        </a>
         {% endif %}
     </div>
     <div class="card-body p-0">
         {% if pedidos %}
         <div class="table-responsive">
-            <table class="table table-hover table-striped mb-0" id="tablaPedidos">
+            <table class="table table-hover table-striped align-middle mb-0" id="tablaPedidos">
                 <thead class="table-dark">
                     <tr>
                         <th>ID</th>
                         <th>Cliente</th>
-                        <th>Artículo</th>
-                        <th>Descripción</th>
+                        <th>Detalles del Artículo</th>
                         <th>Costurera</th>
-                        <th>Entrega</th>
-                        <th>Pagado</th>
-                        <th class="text-end">Importe</th>
+                        <th>Fechas clave</th>
+                        <th>Economía</th>
                         <th class="text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for p in pedidos %}
                     <tr id="row-ped-{{ p.ID }}">
-                        <td class="text-muted small">{{ p.ID }}</td>
-                        <td>{{ p.Cliente or '' }}</td>
-                        <td>{{ p.Articulo or '' }}</td>
-                        <td>{{ p.Descripcion or '' }}</td>
-                        <td>{{ p.Proveedor or '' }}</td>
-                        <td>{{ p.Entrega_Cliente or '' }}</td>
+                        <td class="text-muted small fw-bold">#{{ p.ID }}</td>
+                        
+                        <td class="fw-semibold">{{ p.Cliente or '' }}</td>
+                        
                         <td>
-                            {% if p.Pagado == 'No Pagado' %}
-                                <span class="badge bg-danger">No Pagado</span>
-                            {% elif p.Pagado == 'Efectivo' %}
-                                <span class="badge bg-success">Efectivo</span>
-                            {% elif p.Pagado == 'Tarjeta' %}
-                                <span class="badge bg-primary">Tarjeta</span>
-                            {% elif p.Pagado == 'Bizum' %}
-                                <span class="badge bg-info text-dark">Bizum</span>
-                            {% else %}
-                                {{ p.Pagado or '' }}
+                            <div>{{ p.Articulo or 'Sin artículo' }} 
+                                 <span class="badge bg-secondary ms-1">x{{ p.Cantidad or 1 }}</span>
+                            </div>
+                            {% if p.Descripcion %}
+                            <small class="text-muted text-truncate d-inline-block" style="max-width: 200px;" title="{{ p.Descripcion }}">
+                                {{ p.Descripcion }}
+                            </small>
                             {% endif %}
                         </td>
-                        <td class="text-end">{{ '%.2f€'|format(p.Importe|float) if p.Importe is not none else '—' }}</td>
+                        
+                        <td>{{ p.Proveedor or '—' }}</td>
+                        
+                        <td style="font-size: 0.85rem;">
+                            <div class="text-primary fw-semibold mb-1" title="Entrega a Cliente">
+                                <i class="bi bi-calendar-check me-1"></i>Cli: {{ p.Entrega_Cliente or '—' }}
+                            </div>
+                            <div class="text-muted d-flex flex-wrap gap-2">
+                                <span title="Entrega Proveedor"><i class="bi bi-box-seam"></i> Prov: {{ p.Entrega_Proveedor or '—' }}</span>
+                                <span title="Recogida Proveedor"><i class="bi bi-truck"></i> Rec. P: {{ p.Recogida_Proveedor or '—' }}</span>
+                                <span title="Recogida Cliente"><i class="bi bi-bag-check"></i> Rec. C: {{ p.Recogida_Cliente or '—' }}</span>
+                                <span title="Pago Proveedor"><i class="bi bi-cash"></i> Pago P: {{ p.Pago_Proveedor or '—' }}</span>
+                            </div>
+                        </td>
+                        
+                        <td>
+                            <div class="d-flex align-items-center mb-1">
+                                <strong class="me-2">{{ '%.2f€'|format(p.Importe|float) if p.Importe is not none else '0.00€' }}</strong>
+                                {% if p.Pagado == 'No Pagado' %}
+                                    <span class="badge bg-danger" style="font-size: 0.7rem;">No Pagado</span>
+                                {% elif p.Pagado == 'Efectivo' %}
+                                    <span class="badge bg-success" style="font-size: 0.7rem;">Efectivo</span>
+                                {% elif p.Pagado == 'Tarjeta' %}
+                                    <span class="badge bg-primary" style="font-size: 0.7rem;">Tarjeta</span>
+                                {% elif p.Pagado == 'Bizum' %}
+                                    <span class="badge bg-info text-dark" style="font-size: 0.7rem;">Bizum</span>
+                                {% else %}
+                                    <span class="badge bg-secondary" style="font-size: 0.7rem;">{{ p.Pagado or '—' }}</span>
+                                {% endif %}
+                            </div>
+                            <small class="text-muted" style="font-size: 0.75rem;">
+                                Mat: {{ '%.2f€'|format(p.Coste_Material|float) if p.Coste_Material is not none else '—' }} | 
+                                Prov: {{ '%.2f€'|format(p.Coste_Proveedor|float) if p.Coste_Proveedor is not none else '—' }}
+                            </small>
+                        </td>
+                        
                         <td class="text-center">
-                            <button class="btn btn-outline-primary btn-sm me-1"
-                                    onclick="openEditPedido({{ p|tojson }})">
+                            <button class="btn btn-outline-primary btn-sm me-1 mb-1"
+                                    onclick="openEditPedido({{ p | tojson | forceescape }})" title="Editar">
                                 <i class="bi bi-pencil"></i>
                             </button>
-                            <button class="btn btn-outline-danger btn-sm"
-                                    onclick="deletePedido({{ p.ID }})">
+                            <button class="btn btn-outline-danger btn-sm mb-1"
+                                    onclick="deletePedido('{{ p.ID }}')" title="Eliminar">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </td>
@@ -147,7 +190,7 @@
                 </tbody>
             </table>
         </div>
-        {% else %}
+        {% elif searched %}
         <div class="text-center py-5 text-muted">
             <i class="bi bi-search display-4 d-block mb-2"></i>
             <p>No se encontraron pedidos con los filtros indicados.</p>
@@ -157,7 +200,6 @@
 </div>
 {% endif %}
 
-<!-- Edit Modal -->
 <div class="modal fade" id="editPedidoModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -263,6 +305,7 @@
 <script>
 const editPedidoModal = new bootstrap.Modal(document.getElementById('editPedidoModal'));
 
+// Wait for the page to load, then activate the filter box if it exists
 document.addEventListener("DOMContentLoaded", function() {
     const searchInput = document.getElementById('searchTable');
     if (searchInput) {
@@ -275,6 +318,29 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
+// Robust helper function to parse any date format from Python
+function formatDateForInput(dateVal) {
+    if (!dateVal || dateVal === 'None' || dateVal === 'NaN' || dateVal === 'NaT') {
+        return '';
+    }
+    try {
+        const d = new Date(dateVal);
+        if (!isNaN(d.getTime())) {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        const parts = String(dateVal).match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+        if (parts) {
+            return `${parts[3]}-${parts[2]}-${parts[1]}`;
+        }
+    } catch (e) {
+        console.error("No se pudo parsear la fecha:", dateVal);
+    }
+    return '';
+}
+
 function openEditPedido(p) {
     document.getElementById('editPedidoId').value = p.ID;
     document.getElementById('editClienteId').value = p.Cliente_id || '';
@@ -286,12 +352,15 @@ function openEditPedido(p) {
     document.getElementById('editImporte').value = p.Importe || '';
     document.getElementById('editCosteMaterial').value = p.Coste_Material || '';
     document.getElementById('editCosteProveedor').value = p.Coste_Proveedor || '';
-    document.getElementById('editEntregaCliente').value = p.Entrega_Cliente || '';
-    document.getElementById('editLimite').value = p.Limite || '';
-    document.getElementById('editEntregaProveedor').value = p.Entrega_Proveedor || '';
-    document.getElementById('editRecogidaProveedor').value = p.Recogida_Proveedor || '';
-    document.getElementById('editRecogidaCliente').value = p.Recogida_Cliente || '';
-    document.getElementById('editPagoProveedor').value = p.Pago_Proveedor || '';
+    
+    // Pass all dates through our new helper function
+    document.getElementById('editEntregaCliente').value = formatDateForInput(p.Entrega_Cliente);
+    document.getElementById('editLimite').value = formatDateForInput(p.Limite);
+    document.getElementById('editEntregaProveedor').value = formatDateForInput(p.Entrega_Proveedor);
+    document.getElementById('editRecogidaProveedor').value = formatDateForInput(p.Recogida_Proveedor);
+    document.getElementById('editRecogidaCliente').value = formatDateForInput(p.Recogida_Cliente);
+    document.getElementById('editPagoProveedor').value = formatDateForInput(p.Pago_Proveedor);
+    
     document.getElementById('editPedidoAlert').innerHTML = '';
     editPedidoModal.show();
 }
